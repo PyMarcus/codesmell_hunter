@@ -10,18 +10,6 @@ repos:
     -   id: debug-statements
         language_version: python3
 
--   repo: https://github.com/PyCQA/flake8
-    rev: 3.9.2
-    hooks:
-    -   id: flake8
-        language_version: python3
-
--   repo: https://github.com/asottile/reorder_python_imports
-    rev: v2.6.0
-    hooks:
-    -   id: reorder-python-imports
-        args: [--application-directories=.:src, --py36-plus]
-
 -   repo: https://github.com/asottile/pyupgrade
     rev: v2.29.0
     hooks:
