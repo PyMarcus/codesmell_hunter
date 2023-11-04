@@ -1,0 +1,21 @@
+# Arquivos gerados pelo Python
+*.pyc
+__pycache__
+
+# Ambiente virtual
+venv/
+env/
+*.env
+
+# Arquivos de log
+*.log
+
+# Cache e arquivos temporários
+*.cache
+*.swp
+*.tmp
+
+# Arquivos de configuração local
+*.ini
+*.conf
+*.env
