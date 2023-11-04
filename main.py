@@ -10,5 +10,5 @@ answer and always separate it in this format: 1.Long method, 2.Feature envy """
 
 
 if __name__ == '__main__':
-    gpt = BaseLinksCodeDownload(QUESTION)
+    gpt = BaseLinksCodeDownload(QUESTION, True)
     gpt.start()

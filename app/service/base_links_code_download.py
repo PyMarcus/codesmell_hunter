@@ -15,6 +15,24 @@ from app.service.api_gpt_request import APIGPTRequest
 
 
 class BaseLinksCodeDownload:
+    """
+       This class handles the download and analysis of source code files from GitHub links.
+       It interacts with the GPT API to analyze the code for specific code smells.
+
+       Args:
+           question (str): The question or prompt to be used for GPT API queries.
+           limit_tokens (bool, optional): Whether to limit the token count in the generated prompt.
+                                          Defaults to True.
+
+       Methods:
+           __http_request(link: str) -> Response: Sends an HTTP GET request to the provided link.
+           __count_tokens(question: str) -> int: Counts the number of tokens in a given text.
+           __parser(code: Response, start_line: int, end_line: int) -> str | Response: Parses raw code response.
+           __regex(text: str) -> str: Extracts relevant information from GPT API response.
+           __gpt_response_parser(gpt_response: str) -> Tuple[str, bool]: Parses GP API response.
+           __code_download() -> None: Downloads and analyzes source code from GitHub links.
+           start() -> None: Initiates the code download and analysis process.
+       """
     def __init__(self, question: str, limit_tokens: bool = True) -> None:
         self.__question: str = question
         self.__request_interval: float = 0.02
@@ -31,9 +49,6 @@ class BaseLinksCodeDownload:
             return code
 
     def __count_tokens(self, question: str) -> int:
-        """
-        Verifica a quantidade de tokens na pergunta, na versão free, são cerca de 4k tokens.+-
-        """
         tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
         tokens = tokenizer.tokenize(tokenizer.decode(tokenizer.encode(question)))
         num_tokens = len(tokens)
