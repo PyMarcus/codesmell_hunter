@@ -3,7 +3,6 @@ import os
 from dotenv import load_dotenv
 
 path: str = os.path.abspath(os.path.join(os.path.abspath("."), ".env"))
-print(path)
 load_dotenv(path)
 
 HOST: str = os.getenv("host")
