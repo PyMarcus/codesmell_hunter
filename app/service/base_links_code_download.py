@@ -22,7 +22,7 @@ class BaseLinksCodeDownload:
        Args:
            question (str): The question or prompt to be used for GPT API queries.
            limit_tokens (bool, optional): Whether to limit the token count in the generated prompt.
-                                          Defaults to True.
+                                          Defaults to True.[ *FALSE if do u use GPT plus*]
 
        Methods:
            __http_request(link: str) -> Response: Sends an HTTP GET request to the provided link.
@@ -44,8 +44,12 @@ class BaseLinksCodeDownload:
             self.__tokens = 4097
 
     async def __http_request(self, link: str) -> Response:
-        async with httpx.AsyncClient() as client:
-            code = await client.get(link)
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) '
+                          'Chrome/91.0.4472.124 Safari/537.36'
+        }
+        async with httpx.AsyncClient(headers=headers) as client:
+            code = await client.get(link, follow_redirects=True)
             return code
 
     def __count_tokens(self, question: str) -> int:
@@ -54,12 +58,20 @@ class BaseLinksCodeDownload:
         num_tokens = len(tokens)
         return num_tokens
 
-    def __parser(self, code: Response, start_line: int, end_line: int) -> str | Response:
+    def __parser(self, code: Response, start_line: int, end_line: int) -> typing.List[str] | Response:
         if code.status_code == self.__success:
-            parse = BeautifulSoup(code.text, "html.parser")
-            code_content = json.loads(parse.text)["payload"]["blob"]["rawLines"]
-            lines_expected = code_content[start_line - 1:end_line]
-            return lines_expected
+            try:
+                parse = BeautifulSoup(code.text, "html.parser")
+                code_content = json.loads(parse.text)["payload"]["blob"]["rawLines"]
+                try:
+                    lines_expected = code_content[start_line - 1: end_line]
+                    return lines_expected
+                except TypeError as e:
+                    LogMaker.write_log(f"code {code_content} - error {e}", "error")
+                    return code_content
+            except Exception as e:
+                LogMaker.write_log(f"code {parse} - error {e}", "error")
+                return code
         return code
 
     def __regex(self, text: str) -> str:
@@ -67,7 +79,11 @@ class BaseLinksCodeDownload:
             content = text.split("1")
             return content[1]
         except:
-            return ""
+            try:
+                content = text.split(":")
+                return content[1]
+            except:
+                return ""
 
     def __gpt_response_parser(self, gpt_response: str) -> typing.Tuple[str, bool]:
         gpt_response = gpt_response
@@ -81,14 +97,17 @@ class BaseLinksCodeDownload:
         i = 0
         for row in source_code:
             code = await self.__http_request(row.link)
-            code_from_html: str | Response = self.__parser(code, row.start_line, row.end_line)
-            if code_from_html is None:
+            code_from_html: typing.List[str] | Response = self.__parser(code, row.start_line, row.end_line)
+            if isinstance(code_from_html, Response):
                 LogMaker.write_log(f"Fail to get {row.link} -"
                                    f" status_code {code_from_html.status_code}", "error")
                 time.sleep(self.__request_interval_after_error)
                 continue
-
-            question = self.__question + ":\n" + ' '.join(code_from_html)
+            try:
+                question = self.__question + ":\n" + ' '.join(code_from_html)
+            except TypeError as e:
+                question = self.__question + ":\n" + str(code_from_html)
+                LogMaker.write_log(f"{e} {code_from_html}", "error")
 
             if self.__limit_tokens:
                 if self.__count_tokens(question) >= self.__tokens:
@@ -98,6 +117,8 @@ class BaseLinksCodeDownload:
             gpt_response = self.__gpt.gpt_response(question)
             if not gpt_response:
                 LogMaker.write_log(f"Fail to get response for {row.link} - {row.id_base}", "error")
+                continue
+
             gpt_parser, found = self.__gpt_response_parser(gpt_response)
             bad_smell: BadSmell = BadSmell(
                 id_source_code=row.id,

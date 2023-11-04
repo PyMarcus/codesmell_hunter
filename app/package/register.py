@@ -13,7 +13,7 @@ class LogMaker:
     ERROR: Due to a more serious problem, the software has not been able to perform some function.
     CRITICAL: A very serious error, indicating that the program itself may be unable to continue running.
     """
-    path = os.path.join(os.path.abspath(os.path.pardir), "codesmell_hunter.log")
+    path = "codesmell_hunter.log"
     handler = TimedRotatingFileHandler(path, when="midnight", backupCount=1)
     handler.suffix = "%Y-%m-%d"
     logging.basicConfig(
