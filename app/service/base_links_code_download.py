@@ -151,7 +151,10 @@ class BaseLinksCodeDownload:
                 index_base=row.id_base,
                 url_github=row.link
             )
-            DataBase.insert_bad_smell(bad_smell)
+            try:
+                DataBase.insert_bad_smell(bad_smell)
+            except Exception as e:
+                LogMaker.write_log(f"ERROR to insert {bad_smell.url_github} {e}", "error")
             time.sleep(self.__request_interval)
 
     def start(self) -> None:
@@ -165,4 +168,4 @@ class BaseLinksCodeDownload:
         loop = asyncio.get_event_loop()
         loop.run_until_complete(self.__code_download())
         end = time.time()
-        LogMaker.write_log(f"Complete {end - start:.2f}", "info")
+        LogMaker.write_log(f"Complete {end - start:.2f}s", "info")

@@ -6,7 +6,7 @@ from .base import BaseModel
 class BadSmell(BaseModel):
     __tablename__: str = 'tb_bad_smell'
 
-    id_bad_smell: int = sa.Column(sa.Integer, primary_key=True, autoincrement=True)
+    id_bad_smell: int = sa.Column(sa.BigInteger, primary_key=True, unique=True, autoincrement=True)
     id_source_code: int = sa.Column(sa.Integer, nullable=True)
     index: int = sa.Column(sa.Integer, nullable=True)
     index_base: int = sa.Column(sa.Integer, nullable=True)
