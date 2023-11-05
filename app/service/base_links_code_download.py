@@ -23,6 +23,8 @@ class BaseLinksCodeDownload:
            question (str): The question or prompt to be used for GPT API queries.
            limit_tokens (bool, optional): Whether to limit the token count in the generated prompt.
                                           Defaults to True.[ *FALSE if do u use GPT plus*]
+          limit_rows (int, optional): Whether to limit the rows to insert in database.
+                                          Defaults to 15000.
 
        Methods:
            __http_request(link: str) -> Response: Sends an HTTP GET request to the provided link.
@@ -33,13 +35,14 @@ class BaseLinksCodeDownload:
            __code_download() -> None: Downloads and analyzes source code from GitHub links.
            start() -> None: Initiates the code download and analysis process.
        """
-    def __init__(self, question: str, limit_tokens: bool = True) -> None:
+    def __init__(self, question: str, limit_tokens: bool = True, limit_rows: int = 15000) -> None:
         self.__question: str = question
         self.__request_interval: float = 0.02
         self.__request_interval_after_error: float = 0.05
         self.__success: int = 200
         self.__gpt: APIGPTRequest = APIGPTRequest()
         self.__limit_tokens = limit_tokens
+        self.__limit = limit_rows
         if limit_tokens:
             self.__tokens = 4097
         self.__source_code: typing.List[typing.Type[SourceCodeSmell]] = DataBase.select_all_source_code_smell()
@@ -94,7 +97,7 @@ class BaseLinksCodeDownload:
     def __gpt_response_parser(self, gpt_response: str) -> typing.Tuple[str, bool]:
         gpt_response = gpt_response
         parser = self.__regex(gpt_response)
-        if "YES" in gpt_response:
+        if "YES" in gpt_response.upper():
             return parser, True
         return parser, False
 
@@ -103,6 +106,8 @@ class BaseLinksCodeDownload:
         LogMaker.write_log(f"SOURCE CODE BASE LENGTH {size}", "info")
         time.sleep(2)
         for index, row in enumerate(self.__source_code):
+            if index == self.__limit:
+                sys.exit(0)
             if index >= size:
                 LogMaker.write_log(f"Forced {index} {size}", "warning")
                 break
