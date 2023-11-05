@@ -42,15 +42,21 @@ class BaseLinksCodeDownload:
         self.__limit_tokens = limit_tokens
         if limit_tokens:
             self.__tokens = 4097
+        self.__source_code: typing.List[typing.Type[SourceCodeSmell]] = DataBase.select_all_source_code_smell()
 
     async def __http_request(self, link: str) -> Response:
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) '
                           'Chrome/91.0.4472.124 Safari/537.36'
         }
-        async with httpx.AsyncClient(headers=headers) as client:
-            code = await client.get(link, follow_redirects=True)
-            return code
+        async with httpx.AsyncClient(headers=headers, follow_redirects=True) as client:
+            try:
+                code = await client.get(link, follow_redirects=True)
+                return code
+            except httpx.ConnectError:
+                time.sleep(20)
+                code = await client.get(link, follow_redirects=True)
+                return code
 
     def __count_tokens(self, question: str) -> int:
         tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
@@ -70,7 +76,7 @@ class BaseLinksCodeDownload:
                     LogMaker.write_log(f"code {code_content} - error {e}", "error")
                     return code_content
             except Exception as e:
-                LogMaker.write_log(f"code {parse} - error {e}", "error")
+                LogMaker.write_log(f"code {code.text} - error {e}", "error")
                 return code
         return code
 
@@ -93,9 +99,13 @@ class BaseLinksCodeDownload:
         return parser, False
 
     async def __code_download(self) -> None:
-        source_code: typing.List[typing.Type[SourceCodeSmell]] = DataBase.select_all_source_code_smell()
-        i = 0
-        for row in source_code:
+        size = len(self.__source_code)
+        LogMaker.write_log(f"SOURCE CODE BASE LENGTH {size}", "info")
+        time.sleep(2)
+        for index, row in enumerate(self.__source_code):
+            if index >= size:
+                LogMaker.write_log(f"Forced {index} {size}", "warning")
+                break
             code = await self.__http_request(row.link)
             code_from_html: typing.List[str] | Response = self.__parser(code, row.start_line, row.end_line)
             if isinstance(code_from_html, Response):
@@ -103,6 +113,7 @@ class BaseLinksCodeDownload:
                                    f" status_code {code_from_html.status_code}", "error")
                 time.sleep(self.__request_interval_after_error)
                 continue
+
             try:
                 question = self.__question + ":\n" + ' '.join(code_from_html)
             except TypeError as e:
@@ -137,9 +148,6 @@ class BaseLinksCodeDownload:
             )
             DataBase.insert_bad_smell(bad_smell)
             time.sleep(self.__request_interval)
-            i += 1
-            if i == 100:
-                sys.exit(0)
 
     def start(self) -> None:
         # path: str = os.path.join(os.path.abspath(os.path.pardir), "downloaded")
@@ -149,6 +157,7 @@ class BaseLinksCodeDownload:
         # time.sleep(2)
         start = time.time()
         LogMaker.write_log("Accessing github codes...", "info")
-        asyncio.run(self.__code_download())
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(self.__code_download())
         end = time.time()
         LogMaker.write_log(f"Complete {end - start:.2f}", "info")

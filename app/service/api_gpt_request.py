@@ -10,7 +10,7 @@ class APIGPTRequest:
         self.__response = []
         self.__model: str = "gpt-3.5-turbo-instruct"
         self.__max_tokens: int = 1000
-        self.__interval: float = 20
+        self.__interval: float = 0.05
 
     def __request(self, question: str) -> str | None:
         try:
