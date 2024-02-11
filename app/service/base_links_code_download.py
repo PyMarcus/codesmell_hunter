@@ -7,7 +7,6 @@ import httpx
 from bs4 import BeautifulSoup
 from transformers import BertTokenizer
 from httpx import Response
-
 from app.models import SourceCodeToQuery
 from app.models.bad_smell import BadSmell
 # from app.models.source_code_smell import SourceCodeSmell
@@ -96,18 +95,26 @@ class BaseLinksCodeDownload:
         try:
             content = text.split("1")
             return content[1]
-        except:
+        except Exception as err:
+            LogMaker.write_log(f"Error to try regex code with '1' {err}",
+                               "error")
             try:
                 content = text.split(":")
                 return content[1]
-            except:
+            except Exception as e:
+                LogMaker.write_log(f"Error to try regex code with ':' {e}",
+                                   "error")
                 return ""
 
-    def __gpt_response_parser(self, gpt_response: str) -> typing.Tuple[str, bool]:
+    def __gpt_response_parser(self, gpt_response: str, row: typing.Any) -> typing.Tuple[str, bool]:
         gpt_response = gpt_response
         parser = self.__regex(gpt_response)
         if "YES" in gpt_response.upper():
             return parser, True
+        LogMaker.write_log(f"(REGEX GPT RESPONSE ERROR - but, keep going...) Error to get {row.link} ", "error")
+        DataBase.update_source_code_smell(row.id, 12)
+        error_log = ErrorLog(id_source_code=row.id, ds_error="GPT RESPONSE REGEX ERROR")
+        DataBase.insert_error_log(error_log)
         return parser, False
 
     async def __code_download(self) -> None:
@@ -115,6 +122,9 @@ class BaseLinksCodeDownload:
         # LogMaker.write_log(f"SOURCE CODE BASE LENGTH {size}", "info")
         LogMaker.write_log(f"PENDING SOURCE CODE LENGTH: {size}", "info")
         time.sleep(2)
+
+        _count = 0
+
         for index, row in enumerate(self.__source_code):
             if index == self.__limit:
                 sys.exit(0)
@@ -142,7 +152,7 @@ class BaseLinksCodeDownload:
                 question = self.__question + ":\n" + ' '.join(code_from_html)
             except TypeError as e:
                 question = self.__question + ":\n" + str(code_from_html)
-                LogMaker.write_log(f"Error to concat question and code: {e} Code: {code_from_html}.Keep going...", "error")
+                LogMaker.write_log(f"Error to concat question and code (status {code.status_code}): {e} Code: {code_from_html}.Keep going...", "error")
             if self.__limit_tokens:
                 size_tokens = self.__count_tokens(question)
                 if size_tokens >= self.__tokens:
@@ -158,7 +168,7 @@ class BaseLinksCodeDownload:
                 LogMaker.write_log(f"Fail to get GPT response for {row.link} - {row.id_base}", "error")
                 continue
 
-            gpt_parser, found = self.__gpt_response_parser(gpt_response)
+            gpt_parser, found = self.__gpt_response_parser(gpt_response, row)
             bad_smell: BadSmell = BadSmell(
                 id_source_code=row.id,
                 chat_gpt_response=gpt_response.replace("\n", " "),
@@ -178,6 +188,7 @@ class BaseLinksCodeDownload:
             try:
                 DataBase.insert_bad_smell(bad_smell)
                 DataBase.update_source_code_smell(row.id, 1)
+                print(f"OK")
             except Exception as e:
                 LogMaker.write_log(f"ERROR to insert {bad_smell.url_github} {e}", "error")
                 error_log = ErrorLog(id_source_code=row.id,

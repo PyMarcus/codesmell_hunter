@@ -1,5 +1,7 @@
+import sys
 import time
 import openai
+from openai import OpenAI
 
 from app.models import ErrorLog
 from app.models import SourceCodeToQuery
@@ -12,21 +14,22 @@ class APIGPTRequest:
     def __init__(self) -> None:
         self.__TOKEN: str = GPT_KEY
         self.__response = []
-        self.__model: str = "gpt-3.5-turbo"
+        self.__model: str = "gpt-3.5-turbo-instruct"
         self.__max_tokens: int = 1000
         self.__interval: float = 0.05
 
     def __request(self, question: str, row_id: int) -> str | None:
         try:
-            openai.api_key = self.__TOKEN
-            response = openai.completions.create(
+            # openai.api_key = self.__TOKEN
+            client = OpenAI(api_key=self.__TOKEN)
+            response = client.completions.create(
                 model=self.__model,
                 prompt=question,
                 max_tokens=self.__max_tokens
             )
-            print(response)
+            print(response.choices[0].text)
             time.sleep(self.__interval)
-            return response["choices"][0]["text"]
+            return response.choices[0].text
         except Exception as e:
             error_log = ErrorLog(id_source_code=row_id,
                                  ds_error=f"ERROR QUERYING GPT FROM OPENAI: {e}")
