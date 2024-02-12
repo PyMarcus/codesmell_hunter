@@ -1,11 +1,11 @@
 import datetime
-
 import sqlalchemy as sa
-
 from .base import BaseModel
 
 
 class SourceCodeSmell(BaseModel):
+    """Table responsible for the information to be searched"""
+
     __tablename__: str = 'tb_source_code_smell'
 
     id: int = sa.Column(sa.Integer, primary_key=True, autoincrement=True)
@@ -24,3 +24,4 @@ class SourceCodeSmell(BaseModel):
     end_line: int = sa.Column(sa.Integer, nullable=False)
     link: str = sa.Column(sa.String(1000), nullable=False)
     is_from_industry_relevant_project: int = sa.Column(sa.Integer, nullable=False)
+    cd_status: int = sa.Column(sa.Integer, nullable=True)
